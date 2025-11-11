@@ -1,0 +1,129 @@
+# ============================================================
+# Multi-Feature Linear Regression (From Scratch)
+# Predict Exam Scores using Study Hours, Attendance, Internal Marks
+# Evaluate with 5-Fold Cross-Validation (MSE & R²)
+# ============================================================
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.model_selection import KFold
+
+# ------------------------------------------------------------
+# 1️⃣ Load dataset
+# ------------------------------------------------------------
+file_path = "./datasets/student_exam_scores_12_13.csv"
+df = pd.read_csv(file_path)
+
+# Select relevant features and drop missing values
+feature_cols = ["hours_studied", "attendance_percent", "Internal_marks"]
+df = df[feature_cols + ["exam_score"]].dropna()
+
+X_raw = df[feature_cols].values.astype(float)
+y = df["exam_score"].values.astype(float)
+
+print(f"Loaded {len(df)} records")
+print(df.head())
+
+# ------------------------------------------------------------
+# 2️⃣ Hyperparameters & structures
+# ------------------------------------------------------------
+alpha = 0.01   # learning rate
+epochs = 1500  # gradient descent iterations
+k_folds = 5
+
+kf = KFold(n_splits=k_folds, shuffle=True, random_state=42)
+
+mse_scores = []
+r2_scores = []
+fold_costs = []
+fold = 1
+
+# ------------------------------------------------------------
+# Helper functions
+# ------------------------------------------------------------
+def add_bias_column(X):
+    """Append a column of ones to include the intercept term."""
+    ones = np.ones((X.shape[0], 1))
+    return np.hstack([ones, X])
+
+def standardise_train_test(X_train, X_test):
+    mean = X_train.mean(axis=0)
+    std = X_train.std(axis=0)
+    std[std == 0] = 1.0
+    return (X_train - mean) / std, (X_test - mean) / std, mean, std
+
+# ------------------------------------------------------------
+# 3️⃣ K-Fold Cross-Validation
+# ------------------------------------------------------------
+for train_idx, test_idx in kf.split(X_raw):
+    print(f"\n🔹 Fold {fold}/{k_folds}")
+
+    X_train_raw, X_test_raw = X_raw[train_idx], X_raw[test_idx]
+    y_train, y_test = y[train_idx], y[test_idx]
+
+    # Standardise per fold using training stats only
+    X_train_scaled, X_test_scaled, mean_vec, std_vec = standardise_train_test(X_train_raw, X_test_raw)
+
+    # Add bias term
+    X_train = add_bias_column(X_train_scaled)
+    X_test = add_bias_column(X_test_scaled)
+
+    # Initialise weights (w[0] = intercept)
+    w = np.zeros(X_train.shape[1])
+    n = len(y_train)
+    cost_history = []
+
+    # Gradient Descent
+    for _ in range(epochs):
+        preds = X_train @ w
+        error = preds - y_train
+
+        cost = (1 / (2 * n)) * np.sum(error ** 2)
+        cost_history.append(cost)
+
+        gradient = (1 / n) * (X_train.T @ error)
+        w -= alpha * gradient
+
+    fold_costs.append(cost_history)
+
+    # Evaluate on test data
+    y_pred = X_test @ w
+
+    mse = np.mean((y_pred - y_test) ** 2)
+    ss_total = np.sum((y_test - np.mean(y_test)) ** 2)
+    ss_res = np.sum((y_test - y_pred) ** 2)
+    r2 = 1 - (ss_res / ss_total)
+
+    mse_scores.append(mse)
+    r2_scores.append(r2)
+
+    # Convert coefficients back to original scale for reporting
+    intercept = w[0] - np.sum((mean_vec / std_vec) * w[1:])
+    slopes = w[1:] / std_vec
+
+    print(f"Fold {fold}: MSE = {mse:.3f}, R² = {r2*100:.2f}%")
+    print("Coefficients (original scale):")
+    for col_name, slope in zip(feature_cols, slopes):
+        print(f"  {col_name}: {slope:.4f}")
+    print(f"  Intercept: {intercept:.4f}")
+
+    fold += 1
+
+# ------------------------------------------------------------
+# 4️⃣ Final aggregated metrics
+# ------------------------------------------------------------
+print("\n✅ Average MSE across folds:", np.mean(mse_scores))
+print("✅ Average R² Score across folds: {:.2f}%".format(np.mean(r2_scores) * 100))
+
+# ------------------------------------------------------------
+# 5️⃣ Visualisations
+# ------------------------------------------------------------
+plt.figure(figsize=(8, 5))
+plt.plot(fold_costs[0])
+plt.title("Cost Function Convergence (Fold 1)")
+plt.xlabel("Epoch")
+plt.ylabel("Cost (MSE/2)")
+plt.grid(True)
+plt.show()
+

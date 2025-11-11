@@ -1,0 +1,89 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+# -------------------------------------------------------------
+# 1️⃣ Load and preprocess data efficiently
+# -------------------------------------------------------------
+file_path = "./datasets/emails_16_17_18_19.csv"
+df = pd.read_csv(file_path)
+
+# Drop non-numeric column and convert to float32
+X = df.drop(columns=["Email No.", "Prediction"]).astype(np.float32).values
+y = df["Prediction"].astype(np.int8).values
+
+# Split data into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# -------------------------------------------------------------
+# 2️⃣ Handle class imbalance using undersampling
+# -------------------------------------------------------------
+minority_idx = np.where(y_train == 1)[0]
+majority_idx = np.where(y_train == 0)[0]
+
+np.random.seed(42)
+majority_downsampled = np.random.choice(majority_idx, size=len(minority_idx), replace=False)
+
+balanced_idx = np.concatenate([minority_idx, majority_downsampled])
+np.random.shuffle(balanced_idx)
+
+X_train_bal = X_train[balanced_idx]
+y_train_bal = y_train[balanced_idx]
+
+print("Class distribution after balancing:", np.unique(y_train_bal, return_counts=True))
+
+# -------------------------------------------------------------
+# 3️⃣ Implement SVM from scratch (Linear Kernel)
+# -------------------------------------------------------------
+class SVM:
+    def __init__(self, learning_rate=0.0001, lambda_param=0.01, n_iters=1000):
+        self.lr = learning_rate
+        self.lambda_param = lambda_param
+        self.n_iters = n_iters
+
+    def fit(self, X, y):
+        n_samples, n_features = X.shape
+        y_ = np.where(y <= 0, -1, 1)  # Convert labels to {-1, 1}
+        self.w = np.zeros(n_features, dtype=np.float32)
+        self.b = 0.0
+
+        for _ in range(self.n_iters):
+            for idx, x_i in enumerate(X):
+                condition = y_[idx] * (np.dot(x_i, self.w) - self.b) >= 1
+                if condition:
+                    self.w -= self.lr * (2 * self.lambda_param * self.w)
+                else:
+                    self.w -= self.lr * (2 * self.lambda_param * self.w - np.dot(x_i, y_[idx]))
+                    self.b -= self.lr * y_[idx]
+
+    def predict(self, X):
+        approx = np.dot(X, self.w) - self.b
+        return np.where(approx >= 0, 1, 0)
+
+# -------------------------------------------------------------
+# 4️⃣ Train the model
+# -------------------------------------------------------------
+svm = SVM(learning_rate=0.0001, lambda_param=0.01, n_iters=200)
+svm.fit(X_train_bal, y_train_bal)
+
+# -------------------------------------------------------------
+# 5️⃣ Predict and Evaluate
+# -------------------------------------------------------------
+y_pred = svm.predict(X_test)
+
+acc = accuracy_score(y_test, y_pred)
+prec = precision_score(y_test, y_pred)
+rec = recall_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
+
+print("\n📊 Model Performance:")
+print(f"Accuracy:  {acc:.4f}")
+print(f"Precision: {prec:.4f}")
+print(f"Recall:    {rec:.4f}")
+print(f"F1 Score:  {f1:.4f}")
+
+
+

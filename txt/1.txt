@@ -1,0 +1,48 @@
+def greedy_best_first(graph, heuristic, start, goal):
+   
+    # Priority queue: (heuristic_value, node, path_so_far)
+    frontier = []
+    heappush(frontier, (heuristic[start], start, [start]))
+    
+    visited = set()  # Track visited nodes to avoid cycles
+    order = []       # Record exploration order for learning
+
+    while frontier:
+        # Pop node with smallest heuristic (most promising)
+        estimate, node, path = heappop(frontier)
+        
+        # Skip if already visited
+        if node in visited:
+            continue
+        
+        visited.add(node)
+        order.append((node, estimate))
+
+        # Check if we reached the goal
+        if node == goal:
+            # Calculate actual path cost
+            total_cost = sum(graph[path[i]][path[i + 1]] for i in range(len(path) - 1))
+            return path, total_cost, order
+
+        # Explore neighbors
+        for neighbor, cost in graph[node].items():
+            if neighbor not in visited:
+                # Add to frontier with heuristic value
+                heappush(frontier, (heuristic[neighbor], neighbor, path + [neighbor]))
+
+    return None, float("inf"), order
+
+
+
+start_node, goal_node = "Home", "Bakery"
+path, cost, visit_order = greedy_best_first(city_graph, heuristic_to_goal, start_node, goal_node)
+
+print("Visit order (node, heuristic):")
+for step, (node, estimate) in enumerate(visit_order, start=1):
+    print(f"{step}. {node} (h={estimate})")
+
+if path:
+    print("\nChosen route:", " -> ".join(path))
+    print("Total travel time:", cost, "minutes")
+else:
+    print("No route found with greedy best-first search.")

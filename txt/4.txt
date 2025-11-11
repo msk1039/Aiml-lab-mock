@@ -1,0 +1,109 @@
+from heapq import heappush, heappop
+
+# None marks a blocked cell, numbers mark the cost to step into that cell
+cost_grid = [
+    [1, 1, 2, None, 1],
+    [1, None, 2, None, 2],
+    [1, 1, 1, 1, 2],
+    [2, None, None, 1, 1],
+    [1, 1, 1, None, 1]
+]
+cost_grid1 = [
+    [1, 1, 2, 0, 1],
+    [1, 0, 2, 0, 2],
+    [1, 1, 1, 1, 2],
+    [2, 0, 0, 1, 1],
+    [1, 1, 1, 0, 1]
+]
+
+start = (0, 0)
+goal = (4, 4)
+
+def in_bounds(cell):
+    r, c = cell
+    return 0 <= r < len(cost_grid) and 0 <= c < len(cost_grid[0])
+
+def passable(cell):
+    r, c = cell
+    return cost_grid[r][c] is not None
+
+def neighbors(cell):
+    r, c = cell
+    for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        nxt = (r + dr, c + dc)
+        if in_bounds(nxt) and passable(nxt):
+            yield nxt
+
+def manhattan(a, b):
+    """Heuristic: distance if we can only move in straight lines."""
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+def a_star(grid, start, goal):
+    """Classic A* search that combines real cost (g) and heuristic (h)."""
+    frontier = []
+    heappush(frontier, (manhattan(start, goal), 0, start))  # (f_score, g_score, node)
+
+    came_from = {start: None}
+    g_score = {start: 0}
+
+    while frontier:
+        f, current_cost, current = heappop(frontier)
+        if current == goal:
+            break
+
+        for nxt in neighbors(current):
+            step_cost = grid[nxt[0]][nxt[1]]
+            tentative_g = current_cost + step_cost
+
+            if tentative_g < g_score.get(nxt, float("inf")):
+                came_from[nxt] = current
+                g_score[nxt] = tentative_g
+                new_f = tentative_g + manhattan(nxt, goal)
+                heappush(frontier, (new_f, tentative_g, nxt))
+
+    return came_from, g_score
+
+def build_path(came_from, start, goal):
+    if goal not in came_from:
+        return []
+    path = []
+    current = goal
+    while current is not None:
+        path.append(current)
+        current = came_from[current]
+    path.reverse()
+    return path
+
+
+came_from, g_scores = a_star(cost_grid, start, goal)
+path = build_path(came_from, start, goal)
+
+if path:
+    total_cost = g_scores[goal]
+    print("Optimal path coordinates:")
+    for step, cell in enumerate(path, start=1):
+        print(f"{step}. {cell}")
+    print("\nTotal path cost:", total_cost)
+else:
+    print("No path found.")
+
+# Draw the grid with the path highlighted
+visual_grid = []
+for r, row in enumerate(cost_grid):
+    visual_row = []
+    for c, value in enumerate(row):
+        if (r, c) == start:
+            visual_row.append("S")
+        elif (r, c) == goal:
+            visual_row.append("G")
+        elif (r, c) in path:
+            visual_row.append("*")
+        elif value is None:
+            visual_row.append("#")
+        else:
+            visual_row.append(str(value))
+    visual_grid.append(visual_row)
+
+print("\nGrid view (S=start, G=goal, *=path, #=wall, numbers=cost):")
+for row in visual_grid:
+    print(" ".join(row))

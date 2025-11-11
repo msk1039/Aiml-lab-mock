@@ -1,0 +1,33 @@
+def print_board(towers):
+    for disk,name in towers.items():
+        print("Disk:",disk," name:",name)
+    print("-" * 25)
+    
+def towers_of_hanoi(n,source,auxillary,destination,towers):
+    if n == 1:
+        print("Move disk 1 from ",source," : ",destination)
+        disk = towers[source].pop()
+        towers[destination].append(disk)
+        print_board(towers)
+        return
+        
+    towers_of_hanoi(n-1,source,destination,auxillary,towers)  
+    
+    print("Move disk", n ,"from ",source," : ",destination)
+    disk = towers[source].pop()
+    towers[destination].append(disk)
+    print_board(towers)
+    towers_of_hanoi(n-1,auxillary,source,destination,towers)      
+        
+
+n = int(input("Enter the Number of disks:"))
+towers = {
+    'A' : list(range(n,0,-1)),
+    'B' : [],
+    'C' : []
+}
+
+print("Initial state:")
+print_board(towers)
+
+towers_of_hanoi(n,'A','B','C',towers)

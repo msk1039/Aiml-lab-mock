@@ -1,0 +1,70 @@
+# Define the game map as a graph (adjacency list)
+# Each location connects to other locations
+game_map = {
+    'Village': ['Forest', 'Mountain'],
+    'Forest': ['Village', 'Cave', 'River'],
+    'Mountain': ['Village', 'Peak'],
+    'Cave': ['Forest', 'Treasure'],
+    'River': ['Forest', 'Bridge'],
+    'Peak': ['Mountain'],
+    'Bridge': ['River', 'Castle'],
+    'Castle': ['Bridge'],
+    'Treasure': ['Cave']
+}
+
+# Define start and goal locations
+start_location = 'Village'
+target_location = 'Treasure'
+
+print("Game Map (Graph):")
+for location, connections in game_map.items():
+    print(f"{location}: {connections}")
+print(f"\nStart: {start_location}")
+print(f"Goal: {target_location}\n")
+
+
+def depth_first_search(graph, start, goal):
+
+    visited = set()      # Track visited nodes (cycle detection)
+    order = []           # Record visit order
+    path = []            # Store the successful path
+
+    def dfs(node):
+        """Recursive DFS helper function."""
+        # Skip if already visited (prevents cycles)
+        if node in visited:
+            return False
+        
+        # Mark as visited and record order
+        visited.add(node)
+        order.append(node)
+        path.append(node)
+        
+        # Check if we found the goal
+        if node == goal:
+            return True
+        
+        # Recursively explore each neighbor
+        for neighbor in graph[node]:
+            if dfs(neighbor):  # If goal found in this path
+                return True
+        
+        # Backtrack: remove from path if dead end
+        path.pop()
+        return False
+
+    # Start the search
+    dfs(start)
+    return order, path
+
+
+visit_order, goal_path = depth_first_search(game_map, start_location, target_location)
+
+print("Visit order as DFS explores the map:")
+for step, node in enumerate(visit_order, start=1):
+    print(f"{step}. {node}")
+
+if goal_path and goal_path[-1] == target_location:
+    print("\nPath to the treasure:", " -> ".join(goal_path))
+else:
+    print("\nGoal not reachable from this starting point.")

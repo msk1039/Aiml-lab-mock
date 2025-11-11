@@ -1,0 +1,127 @@
+# ============================================================
+# 🎓 PROBLEM STATEMENT 20:
+# Implement an SVM model (from scratch) with a Polynomial Kernel
+# to predict student performance (Pass/Fail)
+# using study time, attendance, and internal scores as features.
+# Evaluate model using Precision, Recall, and F1-score.
+# ============================================================
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.preprocessing import StandardScaler
+
+# -------------------------------------------------------------
+# 1️⃣ LOAD AND PREPARE DATASET
+# -------------------------------------------------------------
+# Make sure this CSV file exists in the same directory as the script.
+# File name: student_performance_dataset_20.csv
+df = pd.read_csv("./datasets/student_performance_dataset_20.csv")
+
+# Display first few rows for verification
+print("📘 Dataset Preview:")
+print(df.head(), "\n")
+
+# Select important numeric features
+X = df[['Study_Hours_per_Week', 'Attendance_Rate', 'Internal_Scores']].values
+
+# Convert 'Pass_Fail' to numeric (Pass → 1, Fail → 0)
+y = df['Pass_Fail'].apply(lambda x: 1 if str(x).strip().lower() == 'pass' else 0).values
+
+# Scale features — this is important for SVMs
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
+
+# Split dataset into Training (70%) and Testing (30%)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=42
+)
+
+print(f"✅ Training Samples: {X_train.shape[0]}")
+print(f"✅ Testing Samples : {X_test.shape[0]}\n")
+
+# -------------------------------------------------------------
+# 2️⃣ DEFINE POLYNOMIAL KERNEL
+# -------------------------------------------------------------
+def polynomial_kernel(X1, X2, degree=2):
+    """
+    Polynomial Kernel function:
+    K(x, y) = (x·y + 1)^degree
+    Simulates nonlinear separation between classes.
+    """
+    return (np.dot(X1, X2.T) + 1) ** degree
+
+# -------------------------------------------------------------
+# 3️⃣ SIMPLE SVM IMPLEMENTATION (From Scratch)
+# -------------------------------------------------------------
+class SimpleSVM:
+    def __init__(self, lr=0.0001, epochs=300, kernel=None):
+        self.lr = lr
+        self.epochs = epochs
+        self.kernel = kernel
+
+    def fit(self, X, y):
+        """
+        Trains the SVM using simplified gradient updates on α coefficients.
+        """
+        # Convert labels 0 → -1 (SVM requires -1 and +1)
+        y = np.where(y == 0, -1, 1)
+        n_samples = X.shape[0]
+
+        # Kernel matrix (all pairwise dot products)
+        K = self.kernel(X, X)
+
+        # Initialize alpha coefficients
+        self.alpha = np.zeros(n_samples)
+
+        # Training loop (simplified gradient-style update)
+        for epoch in range(self.epochs):
+            for i in range(n_samples):
+                condition = y[i] * np.sum(self.alpha * y * K[:, i])
+                if condition < 1:
+                    self.alpha[i] += self.lr * (1 - condition)
+                else:
+                    self.alpha[i] += self.lr * 0
+
+            # Clip alpha to prevent numeric explosion
+            self.alpha = np.clip(self.alpha, -1e3, 1e3)
+
+        # Save training data for prediction
+        self.X_train = X
+        self.y_train = y
+
+    def predict(self, X):
+        """
+        Predicts labels for given input samples.
+        """
+        y_pred = []
+        for x in X:
+            k = self.kernel(self.X_train, x.reshape(1, -1))
+            result = np.sum(self.alpha * self.y_train * k.flatten())
+            y_pred.append(1 if result >= 0 else 0)
+        return np.array(y_pred)
+
+# -------------------------------------------------------------
+# 4️⃣ TRAIN AND EVALUATE THE MODEL
+# -------------------------------------------------------------
+# Initialize the SVM model with a polynomial kernel
+svm = SimpleSVM(lr=0.0001, epochs=300, kernel=polynomial_kernel)
+
+# Train the model
+svm.fit(X_train, y_train)
+
+# Predict on test set
+y_pred = svm.predict(X_test)
+
+# -------------------------------------------------------------
+# 5️⃣ EVALUATE MODEL PERFORMANCE
+# -------------------------------------------------------------
+precision = precision_score(y_test, y_pred, zero_division=0)
+recall = recall_score(y_test, y_pred, zero_division=0)
+f1 = f1_score(y_test, y_pred, zero_division=0)
+
+print("📊 MODEL PERFORMANCE METRICS 📊")
+print(f"Precision : {precision:.2f}")
+print(f"Recall    : {recall:.2f}")
+print(f"F1-Score  : {f1:.2f}")

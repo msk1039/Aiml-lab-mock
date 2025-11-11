@@ -1,0 +1,91 @@
+from collections import deque
+
+# Maze representation: 0 = free cell, 1 = wall
+# The maze is a 5x5 grid
+maze = [
+    [0, 0, 0, 1, 0],  # Row 0
+    [1, 1, 0, 1, 0],  # Row 1
+    [0, 0, 0, 0, 0],  # Row 2
+    [0, 1, 1, 1, 0],  # Row 3
+    [0, 0, 0, 1, 0]   # Row 4
+]
+
+start = (0, 0)  # Top-left corner (row, col)
+goal = (4, 4)   # Bottom-right corner (row, col)
+
+print("Maze layout (0=free, 1=wall):")
+for row in maze:
+    print(row)
+
+def bfs_shortest_path(grid, start, goal):
+
+    rows, cols = len(grid), len(grid[0])
+    
+    # Queue for BFS: holds cells to explore
+    queue = deque([start])
+    
+    # Parent map: tracks how we reached each cell
+    parents = {start: None}
+
+    while queue:
+        # Dequeue the front cell (FIFO - First In First Out)
+        current = queue.popleft()
+        
+        # Check if we reached the goal
+        if current == goal:
+            break
+
+        r, c = current
+        
+        # Explore 4 neighbors: down, up, right, left
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nr, nc = r + dr, c + dc
+            next_cell = (nr, nc)
+
+            # Check if neighbor is within bounds
+            if not (0 <= nr < rows and 0 <= nc < cols):
+                continue
+            
+            # Skip walls and already visited cells
+            if grid[nr][nc] == 1 or next_cell in parents:
+                continue
+
+            # Record parent and add to queue
+            parents[next_cell] = current
+            queue.append(next_cell)
+
+    return parents
+
+def reconstruct_path(parents, start, goal):
+    """Backtrack from goal to start using the recorded parents."""
+    if goal not in parents:
+        return []
+
+    path = []
+    current = goal
+    while current is not None:
+        path.append(current)
+        current = parents[current]
+    path.reverse()
+    return path
+
+
+parents = bfs_shortest_path(maze, start, goal)
+path = reconstruct_path(parents, start, goal)
+
+print("Shortest path coordinates:")
+for step, cell in enumerate(path, start=1):
+    print(f"{step}. {cell}")
+
+print("\nPath length:", len(path) - 1, "moves")
+
+# Show the maze with the path marked by '*'
+display_grid = [row[:] for row in maze]
+for r, c in path:
+    display_grid[r][c] = "*"
+display_grid[start[0]][start[1]] = "S"
+display_grid[goal[0]][goal[1]] = "G"
+
+print("\nMaze with path (S=start, G=goal, *=route, 1=wall):")
+for row in display_grid:
+    print(" ".join(str(cell) for cell in row))
